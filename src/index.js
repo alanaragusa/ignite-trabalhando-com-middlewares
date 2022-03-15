@@ -11,29 +11,82 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
+  // receber o username pelo header //
   const { username } = request.headers;
 
+  // validar se existe ou não usuário com o username passado //
   const user = users.find(user => user.username === username);
 
   if (!user) {
     return response.status(404).json({error: "User not found"})
   };
 
+  // repassar o usuário para o request //
   request.user = user;
 
+  // função next //
   return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  // receber o usuário já dentro do request //
+  const { user } = request;
+
+  // função next - apenas se o usuário estiver no plano grátis e ainda não possuir 10 todos cadastrados ou se ele já estiver com o plano Pro ativado //
+  if (!user.pro && user.todos.length >= 10) {
+    return response.status(403).json({error:"Time to go Pro to add more todos!"})
+  }
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  // username do header //
+  const { username } = request.headers;
+
+  // id de um todo do request.params //
+  const { id } = request.params;
+
+  // validar o usuário //
+  const user = users.find(user => username === user.username);
+
+  if (!user) {
+    return response.status(404).json({error: "User not found"});
+  };
+
+  // validar o id como uuid //
+  if (!validate(id)) {
+    return response.status(400).json({error:"Id is not valid"})
+  };
+
+  // validar que o id pertence a um todo do usuário informado //
+  const todo = user.todos.find(todo => id === todo.id);
+
+  if (!todo){
+    return response.status(404).json({error:"Todo not found"})
+  };
+
+  // passar o todo e usuário para o request //
+  request.user = user;
+  request.todo = todo;
+
+  // função next //
+  return next();
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
+  // busca pelo usuário deve ser feita pelo id de um usuário passado por parâmetro de rota //
+  const { id } = request.params;
+
+  // caso o usuário exista, repassar para dentro do request.user//
+  const user = users.find(user => id === user.id);
+
+  if (!user) {
+    return response.status(404).json({error: "User does not exist"});
+  };
+
+  request.user = user;
+
+  // função next //
+  return next();
 }
 
 app.post('/users', (request, response) => {
