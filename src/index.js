@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 
 const { v4: uuidv4, validate } = require('uuid');
-const { use } = require('express/lib/application');
 
 const app = express();
 app.use(express.json());
@@ -15,14 +14,14 @@ function checksExistsUserAccount(request, response, next) {
   const { username } = request.headers;
 
   // validar se existe ou não usuário com o username passado //
-  const user = users.find(user => user.username === username);
+  const userSelected = users.find(user => username === user.username);
 
-  if (!user) {
-    return response.status(404).json({error: "User not found"})
+  if (!userSelected) {
+    return response.status(404).json({error: "User not found"});
   };
 
   // repassar o usuário para o request //
-  request.user = user;
+  request.user = userSelected;
 
   // função next //
   return next();
@@ -33,9 +32,14 @@ function checksCreateTodosUserAvailability(request, response, next) {
   const { user } = request;
 
   // função next - apenas se o usuário estiver no plano grátis e ainda não possuir 10 todos cadastrados ou se ele já estiver com o plano Pro ativado //
-  if (!user.pro && user.todos.length >= 10) {
+  const { pro, todos } = user;
+
+  if (!pro && todos.length >= 10) {
     return response.status(403).json({error:"Time to go Pro to add more todos!"})
   }
+
+  // função next //
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
@@ -44,29 +48,29 @@ function checksTodoExists(request, response, next) {
 
   // id de um todo do request.params //
   const { id } = request.params;
-
-  // validar o usuário //
-  const user = users.find(user => username === user.username);
-
-  if (!user) {
-    return response.status(404).json({error: "User not found"});
-  };
-
+  
   // validar o id como uuid //
   if (!validate(id)) {
-    return response.status(400).json({error:"Id is not valid"})
-  };
+    return response.status(400).json({error:"Id is not valid"});
+  }
+
+  // validar o usuário //
+  const userValidated = users.find(user => username === user.username);
+
+  if (!userValidated) {
+    return response.status(404).json({error: "User not found"});
+  }
 
   // validar que o id pertence a um todo do usuário informado //
-  const todo = user.todos.find(todo => id === todo.id);
+  const todoSelected = userValidated.todos.find(todo => id === todo.id);
 
-  if (!todo){
-    return response.status(404).json({error:"Todo not found"})
-  };
+  if (!todoSelected){
+    return response.status(404).json({error:"Todo not found"});
+  }
 
   // passar o todo e usuário para o request //
-  request.user = user;
-  request.todo = todo;
+  request.user = userValidated;
+  request.todo = todoSelected;
 
   // função next //
   return next();
@@ -77,13 +81,13 @@ function findUserById(request, response, next) {
   const { id } = request.params;
 
   // caso o usuário exista, repassar para dentro do request.user//
-  const user = users.find(user => id === user.id);
+  const userExists = users.find(user => id === user.id);
 
-  if (!user) {
+  if (!userExists) {
     return response.status(404).json({error: "User does not exist"});
   };
 
-  request.user = user;
+  request.user = userExists;
 
   // função next //
   return next();
